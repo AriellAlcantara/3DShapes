@@ -23,103 +23,55 @@ public class LineGenerator : MonoBehaviour
 
     public void DrawLine()
     {
-
         if (material == null)
         {
             Debug.LogError("You need to add a material");
             return;
         }
-        GL.PushMatrix();
 
+        GL.PushMatrix();
         GL.Begin(GL.LINES);
         material.SetPass(0);
 
+        DrawSphere(cubeCenter);
+        DrawSphere(cubeOtherCenter);
 
-        var squareOne = GetFrontSquare(cubeCenter);
-        var squareTwo = GetFrontSquare(cubeOtherCenter);
-
-        var squareOneScale = focalLength / ((cubeCenter.z - cubeSideLength * .5f) + focalLength);
-        var squareTwoScale = focalLength / ((cubeOtherCenter.z - cubeSideLength * .5f) + focalLength);
-        /*
-        for (int i = 0; i < squareVectors.Length; i++ )
-        {
-            
-            var deductedVector = cubeCenter - squareVectors[i];
-            var rotatedVectors =  RotateBy(cubeRotation.z, deductedVector.x, deductedVector.y);
-            squareVectors[i] = rotatedVectors;  
-        }
-        */
-        
-
-        
-        
-        if(CheckCollision(squareTwo, squareOne))
-        {
-            Debug.Log("Collision Detected");
-        }
-
-        DrawSquare(squareOne, squareOneScale);
-        DrawSquare(squareTwo, squareTwoScale);
-
-        GL.PopMatrix();
         GL.End();
-
+        GL.PopMatrix();
     }
 
-    private void DrawSquare(Vector3[] squareVectors, float frontScale)
+    public void DrawSphere(Vector3 center)
     {
-        for (int i = 0; i < squareVectors.Length; i++)
+        int segments = 10;
+        float radius = cubeSideLength * 0.5f;
+
+        for (int i = 0; i < segments; i++)
         {
+            float theta1 = (i / (float)segments) * Mathf.PI * 2;
+            float theta2 = ((i + 1) / (float)segments) * Mathf.PI * 2;
 
-            GL.Color(material.color);
-            var point1 = squareVectors[i] * frontScale;
-            GL.Vertex3(point1.x, point1.y, 0);
-            var point2 = squareVectors[(i + 1) % squareVectors.Length] * frontScale;
-            GL.Vertex3(point2.x, point2.y, 0);
+            Vector3 p1 = ApplyRotation(new Vector3(center.x + Mathf.Cos(theta1) * radius, center.y, center.z + Mathf.Sin(theta1) * radius));
+            Vector3 p2 = ApplyRotation(new Vector3(center.x + Mathf.Cos(theta2) * radius, center.y, center.z + Mathf.Sin(theta2) * radius));
 
+            GL.Vertex3(p1.x, p1.y, 0);
+            GL.Vertex3(p2.x, p2.y, 0);
         }
+    }
+
+    public Vector3 ApplyRotation(Vector3 point)
+    {
+        var centered = point - cubeCenter;
+        var rotatedX = RotateBy(cubeRotation.x, centered.y, centered.z);
+        var rotatedY = RotateBy(cubeRotation.y, centered.x, centered.z);
+        var rotatedZ = RotateBy(cubeRotation.z, centered.x, centered.y);
+
+        return new Vector3(rotatedY.x, rotatedZ.y, rotatedX.x) + cubeCenter;
     }
 
     public Vector2 RotateBy(float angle, float axis1, float axis2)
     {
-        var firstAxis = axis1 * Mathf.Cos(angle) - axis2 * Mathf.Sin(angle);
-        var secondAxis = axis2 * Mathf.Cos(angle) + axis1 * Mathf.Sin(angle);
-        return new Vector2(firstAxis, secondAxis);
-    }
-
-    public Vector3[] GetFrontSquare(Vector2 boxCenter)
-    {
-        var halfLength = cubeSideLength * .5f;
-
-        return new[] {
-            new Vector3(boxCenter.x + halfLength, boxCenter.y + halfLength, -halfLength),
-            new Vector3(boxCenter.x - halfLength, boxCenter.y + halfLength, -halfLength),
-            new Vector3(boxCenter.x - halfLength, boxCenter.y - halfLength, -halfLength),
-            new Vector3(boxCenter.x + halfLength, boxCenter.y - halfLength, -halfLength),
-        };
-    }
-
-    public bool CheckCollision(Vector3[] box1, Vector3[] box2)
-    {
-        /*
-        var xMin = box1[1].x > box2[0].x;
-        var xMax = box1[0].x < box2[1].x;
-        var yMin = box1[1].y > box2[2].y;
-        var yMax = box1[2].y < box2[1].y;
-        */
-
-        var xMin = box1[0].x >= box2[1].x;
-        var xMax = box1[1].x <= box2[0].x;
-        var yMin = box1[2].y <= box2[1].y;
-        var yMax = box1[1].y >= box2[2].y;
-
-        Debug.Log($"{xMin} {xMax} {yMin} {yMax}");
-
-        if (xMin && xMax && yMin && yMax)
-        {
-            return true;
-        }
-
-        return false;
+        float cosA = Mathf.Cos(angle);
+        float sinA = Mathf.Sin(angle);
+        return new Vector2(axis1 * cosA - axis2 * sinA, axis2 * cosA + axis1 * sinA);
     }
 }
